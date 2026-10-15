@@ -180,6 +180,7 @@ impl Tasks {
                     icon,
                     color: bar.color.clone().unwrap_or_default(),
                     file_pattern: bar.file_pattern.clone().unwrap_or_default(),
+                    ..Default::default()
                 })
             })
             .collect()
