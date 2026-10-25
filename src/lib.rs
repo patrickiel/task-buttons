@@ -40,6 +40,8 @@ struct TasksFile {
     /// Defaults for every task.
     options: Options,
     windows: Option<Platform>,
+    linux: Option<Platform>,
+    osx: Option<Platform>,
 }
 
 #[derive(Clone, Debug, Default, Deserialize)]
@@ -55,6 +57,8 @@ struct Task {
     options: Options,
     detail: Option<String>,
     windows: Option<Platform>,
+    linux: Option<Platform>,
+    osx: Option<Platform>,
     depends_on: DependsOn,
     /// `sequence`, else the dependencies run side by side.
     depends_order: Option<String>,
@@ -78,13 +82,26 @@ struct StatusBar {
     file_pattern: Option<String>,
 }
 
-/// What `windows` overrides on Windows.
+/// What `windows`, `linux` or `osx` overrides on that platform.
 #[derive(Clone, Debug, Default, Deserialize)]
 #[serde(default)]
 struct Platform {
     command: Option<Arg>,
     args: Option<Vec<Arg>>,
     options: Option<Options>,
+}
+
+impl Platform {
+    /// Of `windows`, `linux` and `osx`, the one for the platform den runs on.
+    fn current<'a>(windows: &'a Option<Platform>, linux: &'a Option<Platform>, osx: &'a Option<Platform>) -> Option<&'a Platform> {
+        if cfg!(windows) {
+            windows.as_ref()
+        } else if cfg!(target_os = "macos") {
+            osx.as_ref()
+        } else {
+            linux.as_ref()
+        }
+    }
 }
 
 /// A command or argument: a string, or `{ "value", "quoting" }`.
@@ -128,12 +145,10 @@ impl Task {
         self.label.clone().or_else(|| self.script.as_ref().map(|s| format!("npm: {s}")))
     }
 
-    /// With `windows` applied, on Windows.
+    /// With the platform's override (`windows`, `linux` or `osx`) applied.
     fn for_platform(&self) -> Task {
         let mut task = self.clone();
-        if cfg!(windows)
-            && let Some(platform) = &self.windows
-        {
+        if let Some(platform) = Platform::current(&self.windows, &self.linux, &self.osx) {
             task.command = platform.command.clone().or(task.command);
             task.args = platform.args.clone().unwrap_or(task.args);
             if let Some(options) = &platform.options {
@@ -243,9 +258,7 @@ impl Tasks {
 
     fn top_options(&self) -> Options {
         let mut options = self.file.options.clone();
-        if cfg!(windows)
-            && let Some(cwd) = self.file.windows.as_ref().and_then(|w| w.options.as_ref()).and_then(|o| o.cwd.clone())
-        {
+        if let Some(cwd) = Platform::current(&self.file.windows, &self.file.linux, &self.file.osx).and_then(|p| p.options.as_ref()).and_then(|o| o.cwd.clone()) {
             options.cwd = Some(cwd);
         }
         options
@@ -588,13 +601,16 @@ mod tests {
             r#"{ "options": { "cwd": "${workspaceFolder}/web" }, "tasks": [
                 { "label": "a", "command": "cargo", "args": ["run", "--", "two words", { "value": "q", "quoting": "strong" }] },
                 { "label": "b", "command": "echo ${workspaceFolderBasename} ${input:x}", "options": { "cwd": "sub" } },
-                { "label": "c", "command": "unix", "windows": { "command": "win" } }
+                { "label": "c", "command": "other", "windows": { "command": "win" }, "linux": { "command": "lin" }, "osx": { "command": "mac" } },
+                { "label": "d", "command": "other", "windows": { "command": "win" } }
             ] }"#,
         );
         let root = Path::new(ROOT);
         assert_eq!(t.runs("a").unwrap(), [("cargo run -- \"two words\" q".to_string(), root.join(format!("{ROOT}/web")))]);
         assert_eq!(t.runs("b").unwrap(), [("echo app ${input:x}".to_string(), root.join("sub"))]);
-        assert_eq!(t.runs("c").unwrap()[0].0, if cfg!(windows) { "win" } else { "unix" });
+        let platform = if cfg!(windows) { "win" } else if cfg!(target_os = "macos") { "mac" } else { "lin" };
+        assert_eq!(t.runs("c").unwrap()[0].0, platform);
+        assert_eq!(t.runs("d").unwrap()[0].0, if cfg!(windows) { "win" } else { "other" });
         assert!(t.runs("nope").is_err());
     }
 

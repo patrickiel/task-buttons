@@ -26,7 +26,7 @@ It reads the same settings, under each task's `options.statusbar`:
 }
 ```
 
-Also understood: comments and trailing commas, `args` (quoted when they have spaces), `options.cwd` (per task or for all), `windows` overrides, `npm` tasks (run with pnpm, yarn or bun when their lock file is there), `dependsOn` (side by side in terminals of their own, or one after another in one terminal with `"dependsOrder": "sequence"`), and the variables `${workspaceFolder}`, `${workspaceFolderBasename}`, `${env:NAME}`, `${pathSeparator}`. Variables that need an editor or a prompt (`${file}`, `${input:…}`) stay as they are. `$(icon)` names are VS Code's codicons, mapped to the [Lucide](https://lucide.dev/icons) icons den has where the names differ; any Lucide name works too.
+Also understood: comments and trailing commas, `args` (quoted when they have spaces), `options.cwd` (per task or for all), `windows`, `linux` and `osx` overrides, `npm` tasks (run with pnpm, yarn or bun when their lock file is there), `dependsOn` (side by side in terminals of their own, or one after another in one terminal with `"dependsOrder": "sequence"`), and the variables `${workspaceFolder}`, `${workspaceFolderBasename}`, `${env:NAME}`, `${pathSeparator}`. Variables that need an editor or a prompt (`${file}`, `${input:…}`) stay as they are. `$(icon)` names are VS Code's codicons, mapped to the [Lucide](https://lucide.dev/icons) icons den has where the names differ; any Lucide name works too.
 
 ## Settings
 
